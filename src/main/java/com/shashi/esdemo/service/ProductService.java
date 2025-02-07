@@ -7,6 +7,9 @@ import com.shashi.esdemo.repo.ProductRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import java.util.List;
+import java.util.stream.Collectors;
+
+import org.springframework.data.elasticsearch.client.elc.ElasticsearchTemplate;
 
 @Service
 public class ProductService {
@@ -17,20 +20,24 @@ public class ProductService {
     @Autowired
     private ProductIndexRepository productIndexRepository;
 
+    @Autowired
+    private ElasticsearchTemplate elasticsearchTemplate;
+
     // Save product to MySQL and index it in Elasticsearch
     public Product saveProduct(Product product) {
         Product savedProduct = productRepository.save(product); // Save to MySQL
 
         // Index the product in Elasticsearch
-        ProductIndex productIndex = new ProductIndex();
-        productIndex.setId(savedProduct.getId().toString());
-        productIndex.setName(savedProduct.getName());
-        productIndex.setDescription(savedProduct.getDescription());
-        productIndex.setPrice(savedProduct.getPrice());
-        productIndex.setCategory(savedProduct.getCategory());
-        productIndexRepository.save(productIndex);
+        productIndexRepository.save(toProductIndex(savedProduct));
 
         return savedProduct;
+    }
+
+    public List<Product> saveAll(List<Product> products) {
+        List<Product> productList = productRepository.saveAll(products);
+        List<ProductIndex> pi = productList.stream().map(this::toProductIndex).toList();
+        elasticsearchTemplate.save(pi);
+        return productList;
     }
 
     // Search products in Elasticsearch
@@ -41,5 +48,15 @@ public class ProductService {
     // Get products by category from MySQL
     public List<Product> getProductsByCategory(String category) {
         return productRepository.findByCategory(category);
+    }
+
+    private ProductIndex toProductIndex(Product product) {
+        ProductIndex productIndex = new ProductIndex();
+        productIndex.setId(product.getId().toString());
+        productIndex.setName(product.getName());
+        productIndex.setDescription(product.getDescription());
+        productIndex.setPrice(product.getPrice());
+        productIndex.setCategory(product.getCategory());
+        return productIndex;
     }
 }

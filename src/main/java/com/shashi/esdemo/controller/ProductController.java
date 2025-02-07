@@ -19,6 +19,11 @@ public class ProductController {
         return productService.saveProduct(product);
     }
 
+    @PostMapping("/bulk")
+    public List<Product> addBulkProduct(@RequestBody List<Product> products) {
+        return productService.saveAll(products);
+    }
+
     @GetMapping("/search")
     public List<ProductIndex> searchProducts(@RequestParam String query) {
         return productService.searchProducts(query);
